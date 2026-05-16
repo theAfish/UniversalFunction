@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Universal Function</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo">∫</div>
+      <div>
+        <div class="title">Universal Function</div>
+        <div class="subtitle">map anything → anything</div>
+      </div>
+    </div>
+    <button id="newSessionBtn" class="primary">+ New f</button>
+    <ul id="sessionList"></ul>
+    <div class="footnote">sessions are saved in <code>workspaces/</code></div>
+  </aside>
+
+  <main id="main">
+    <header id="topbar">
+      <input id="sessionName" placeholder="name this f…" />
+      <span id="status" class="status"></span>
+    </header>
+
+    <section id="stage">
+      <!-- DESIGN VIEW -->
+      <div id="designView">
+        <div class="equation">
+          <span class="fn">f<span class="paren">(</span></span>
+          <div class="annotated-slot">
+            <div class="hint">
+              <span>what you want to <b>input</b></span>
+              <svg viewBox="0 0 20 48" width="20" height="48"><path d="M 10 4 C 15 18, 5 28, 10 42" fill="none" stroke="currentColor" stroke-width="2"/><polygon points="10,48 5,40 15,40" fill="currentColor"/></svg>
+            </div>
+            <div class="slot slot-x">
+              <textarea id="xDesc" class="desc-input" placeholder="x" rows="1"></textarea>
+            </div>
+          </div>
+          <span class="fn"><span class="paren">)</span> <span class="eq">=</span></span>
+          <div class="annotated-slot">
+            <div class="hint">
+              <span>what you want it <b>be</b></span>
+              <svg viewBox="0 0 20 48" width="20" height="48"><path d="M 10 4 C 15 18, 5 28, 10 42" fill="none" stroke="currentColor" stroke-width="2"/><polygon points="10,48 5,40 15,40" fill="currentColor"/></svg>
+            </div>
+            <div class="slot slot-y">
+              <textarea id="yDesc" class="desc-input" placeholder="y" rows="1"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="defineBtn" class="primary big">conjure f</button>
+        </div>
+        <div id="tagline" class="tagline"></div>
+      </div>
+
+      <!-- RUN VIEW -->
+      <div id="runView" class="hidden">
+        <div class="run-header">
+          <div>
+            <div class="run-name" id="runName"></div>
+            <div class="run-tagline" id="runTagline"></div>
+          </div>
+          <button id="redesignBtn" class="ghost">↻ redesign</button>
+        </div>
+
+        <div class="run-equation">
+          <div class="run-slot">
+            <div class="run-label" id="xLabel">input</div>
+            <div id="xWidget"></div>
+          </div>
+          <div class="run-arrow">f →</div>
+          <div class="run-slot">
+            <div class="run-label" id="yLabel">output</div>
+            <div id="yWidget" class="output-pane">
+              <div class="placeholder">y will appear here</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="runBtn" class="primary big">run f(x)</button>
+        </div>
+
+        <details class="code-details">
+          <summary>peek at the generated code</summary>
+          <pre id="codeView"></pre>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

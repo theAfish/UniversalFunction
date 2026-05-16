@@ -1,0 +1,14 @@
+# Environment
+.env
+.venv/
+venv/
+
+# Runtime data
+workspaces/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
