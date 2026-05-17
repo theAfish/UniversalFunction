@@ -46,7 +46,7 @@ echo.
 REM ── Install dependencies ──────────────────────
 echo  [2/2] Installing dependencies (this may take a minute)...
 call .venv\Scripts\activate.bat
-pip install -r requirements.txt --quiet --disable-pip-version-check
+pip install . --quiet --disable-pip-version-check
 if %errorlevel% neq 0 (
     echo  [ERROR] Failed to install dependencies.
     echo  Try running this script again, or check your internet connection.
