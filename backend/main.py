@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -39,6 +40,19 @@ class DefineBody(BaseModel):
 
 class RenameBody(BaseModel):
     name: str
+
+
+_ALLOWED_SETTINGS = {"OPENAI_API_KEY", "OPENAI_API_BASE", "MODEL", "EXEC_TIMEOUT"}
+
+
+class SaveSettingsBody(BaseModel):
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_API_BASE: Optional[str] = None
+    MODEL: Optional[str] = None
+    EXEC_TIMEOUT: Optional[str] = None
+
+
+_ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 
 # ---------- Session endpoints ----------
@@ -88,11 +102,17 @@ def api_define(sid: str, body: DefineBody) -> dict[str, Any]:
         raise HTTPException(500, f"LLM design failed: {e}")
 
     sessions.save_spec(sid, spec)
-    sessions.update_meta(
-        sid,
-        x_description=body.x_description,
-        y_description=body.y_description,
-    )
+
+    # Auto-name: if the session still carries the default name, adopt the spec name.
+    current_meta = sessions.get_session(sid)["meta"]
+    name_update: dict[str, Any] = {
+        "x_description": body.x_description,
+        "y_description": body.y_description,
+    }
+    if current_meta.get("name") == "Untitled f" and spec.get("name"):
+        name_update["name"] = spec["name"]
+
+    sessions.update_meta(sid, **name_update)
 
     installed = executor.ensure_dependencies(spec.get("dependencies", []) or [])
     return {"spec": spec, "installed": installed, "session": sessions.get_session(sid)}
@@ -163,6 +183,64 @@ def api_get_file(sid: str, name: str) -> FileResponse:
         if p.exists() and p.is_file() and str(p).startswith(str(sdir.resolve())):
             return FileResponse(p)
     raise HTTPException(404, "file not found")
+
+
+# ---------- Settings ----------
+
+@app.get("/api/settings")
+def api_get_settings() -> Dict[str, str]:
+    """Return current runtime settings (reads live env vars)."""
+    return {
+        "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", ""),
+        "OPENAI_API_BASE": os.environ.get("OPENAI_API_BASE", ""),
+        "MODEL": os.environ.get("MODEL", ""),
+        "EXEC_TIMEOUT": os.environ.get("EXEC_TIMEOUT", "60"),
+    }
+
+
+@app.post("/api/settings")
+def api_save_settings(body: SaveSettingsBody) -> Dict[str, str]:
+    """Persist settings to .env and reload env vars immediately."""
+    updates: dict[str, str] = {}
+    if body.OPENAI_API_KEY is not None:
+        updates["OPENAI_API_KEY"] = body.OPENAI_API_KEY
+    if body.OPENAI_API_BASE is not None:
+        updates["OPENAI_API_BASE"] = body.OPENAI_API_BASE
+    if body.MODEL is not None:
+        updates["MODEL"] = body.MODEL
+    if body.EXEC_TIMEOUT is not None:
+        updates["EXEC_TIMEOUT"] = body.EXEC_TIMEOUT
+
+    # Read existing .env lines
+    existing: list[str] = []
+    if _ENV_PATH.exists():
+        existing = _ENV_PATH.read_text(encoding="utf-8").splitlines()
+
+    updated_keys: set[str] = set()
+    new_lines: list[str] = []
+    for line in existing:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            k = stripped.partition("=")[0].strip()
+            if k in updates:
+                new_lines.append(f"{k}={updates[k]}")
+                updated_keys.add(k)
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+
+    # Append any keys not already present
+    for k, v in updates.items():
+        if k not in updated_keys:
+            new_lines.append(f"{k}={v}")
+
+    _ENV_PATH.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+    # Reload into os.environ immediately so next LLM call picks them up
+    load_dotenv(_ENV_PATH, override=True)
+
+    return {"status": "saved"}
 
 
 # ---------- Static frontend ----------

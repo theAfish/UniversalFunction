@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Universal Function</title>
   <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/combine/npm/tone@14/build/Tone.js,npm/@magenta/music@1/es6/core.js,npm/html-midi-player@1/dist/midi-player.js"></script>
 </head>
 <body>
   <aside id="sidebar">
@@ -17,6 +18,7 @@
     </div>
     <button id="newSessionBtn" class="primary">+ New f</button>
     <ul id="sessionList"></ul>
+    <button id="settingsBtn" class="ghost settings-btn">⚙ Settings</button>
     <div class="footnote">sessions are saved in <code>workspaces/</code></div>
   </aside>
 
@@ -93,6 +95,45 @@
       </div>
     </section>
   </main>
+
+  <!-- Settings Modal -->
+  <div id="settingsOverlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="closeSettingsBtn" class="ghost icon-btn" title="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>
+          <span class="field-label">OpenAI API Key <span class="required">*</span></span>
+          <div class="input-row">
+            <input id="setApiKey" type="password" placeholder="sk-…" autocomplete="off" />
+            <button class="ghost icon-btn toggle-pw" data-target="setApiKey" title="Show/hide">👁</button>
+          </div>
+          <small>Your secret key from the AI provider. Never shared anywhere.</small>
+        </label>
+        <label>
+          <span class="field-label">API Base URL</span>
+          <input id="setApiBase" type="text" placeholder="https://api.openai.com/v1" />
+          <small>Leave blank for default OpenAI. Use a custom URL for Dashscope, Azure, etc.</small>
+        </label>
+        <label>
+          <span class="field-label">Model</span>
+          <input id="setModel" type="text" placeholder="gpt-4o" />
+          <small>The model name your endpoint serves, e.g. <code>gpt-4o</code> or <code>openai/glm-5.1</code>.</small>
+        </label>
+        <label>
+          <span class="field-label">Execution Timeout (seconds)</span>
+          <input id="setExecTimeout" type="number" min="5" max="600" step="1" placeholder="60" />
+          <small>How long a generated function is allowed to run before it's stopped.</small>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button id="saveSettingsBtn" class="primary">Save settings</button>
+        <span id="settingsStatus" class="status"></span>
+      </div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

@@ -8,6 +8,7 @@ Separating code from JSON avoids escaping nightmares with embedded strings.
 """
 from __future__ import annotations
 
+import ast
 import json
 import os
 import re
@@ -141,8 +142,24 @@ def _parse_response(raw: str) -> tuple[dict[str, Any], str]:
     return spec, code
 
 
+def _validate_code_syntax(code: str) -> str | None:
+    """Return a human-readable error string if the code has a syntax error, else None."""
+    try:
+        ast.parse(code)
+        return None
+    except SyntaxError as e:
+        return f"SyntaxError at line {e.lineno}: {e.msg}\n  {e.text or ''}"
+
+
+_MAX_DEBUG_RETRIES = 3
+
+
 def design_function(x_description: str, y_description: str) -> dict[str, Any]:
-    """Ask the LLM to design a mapping function. Returns the parsed spec dict (with code)."""
+    """Ask the LLM to design a mapping function. Returns the parsed spec dict (with code).
+
+    After generating code the agent validates the syntax and, if broken, feeds the
+    error back to the LLM for a fix — up to _MAX_DEBUG_RETRIES times.
+    """
     client = _make_client()
     model = os.getenv("MODEL", "qwen-plus")
 
@@ -153,16 +170,59 @@ def design_function(x_description: str, y_description: str) -> dict[str, Any]:
         "Reply with the JSON block first (```json ... ```) then the Python code (```python ... ```)."
     )
 
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.9,
-    )
-    raw = resp.choices[0].message.content or ""
-    spec, code = _parse_response(raw)
+    messages: list[dict] = [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    last_error: str | None = None
+    for attempt in range(1, _MAX_DEBUG_RETRIES + 1):
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.9,
+        )
+        raw = resp.choices[0].message.content or ""
+
+        try:
+            spec, code = _parse_response(raw)
+        except ValueError as e:
+            # Structural parse error — ask LLM to re-emit the full response correctly.
+            last_error = str(e)
+            messages.append({"role": "assistant", "content": raw})
+            messages.append({
+                "role": "user",
+                "content": (
+                    f"Your previous response could not be parsed (attempt {attempt}/{_MAX_DEBUG_RETRIES}).\n"
+                    f"Error: {last_error}\n\n"
+                    "Please re-send the FULL response: ```json ... ``` block first, "
+                    "then the ```python ... ``` block. Fix any issues."
+                ),
+            })
+            continue
+
+        syntax_error = _validate_code_syntax(code)
+        if syntax_error is None:
+            # Code is syntactically valid — we're done.
+            break
+
+        # Syntax error found — ask the LLM to fix it.
+        last_error = syntax_error
+        messages.append({"role": "assistant", "content": raw})
+        messages.append({
+            "role": "user",
+            "content": (
+                f"Your Python code has a syntax error (attempt {attempt}/{_MAX_DEBUG_RETRIES}):\n\n"
+                f"```\n{syntax_error}\n```\n\n"
+                "Please re-send the FULL response (```json``` block then fixed ```python``` block). "
+                "Make sure the Python code parses without any SyntaxError."
+            ),
+        })
+    else:
+        raise ValueError(
+            f"LLM failed to produce valid Python after {_MAX_DEBUG_RETRIES} attempts. "
+            f"Last error: {last_error}"
+        )
 
     # Attach code and fill defaults
     spec["code"] = code

@@ -12,6 +12,7 @@ const state = {
   sessionId: null,
   spec: null,
   meta: null,
+  busy: false,
 };
 
 // ---------- Sessions ----------
@@ -52,6 +53,18 @@ async function newSession() {
 async function selectSession(id) {
   state.sessionId = id;
   const s = await api(`/api/sessions/${id}`);
+  // Bail out if a define/run operation is in progress to avoid clobbering state
+  if (state.busy) return;
+  // Auto-rename legacy sessions that have a spec but still carry the default name.
+  if (s.spec?.name && s.meta.name === "Untitled f") {
+    await fetch(`/api/sessions/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: s.spec.name }),
+    });
+    s.meta.name = s.spec.name;
+    loadSessions();
+  }
   state.meta = s.meta;
   state.spec = s.spec;
   $("#sessionName").value = s.meta.name || "";
@@ -244,6 +257,14 @@ function renderOutput(spec, result) {
     const img = document.createElement("img");
     img.src = `data:${mime || "image/png"};base64,${result.data_base64}`;
     host.appendChild(img);
+  } else if (result.data_base64 && (mime === "audio/midi" || mime === "audio/mid" || (result.filename || "").match(/\.midi?$/i))) {
+    const bytes = Uint8Array.from(atob(result.data_base64), c => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: "audio/midi" });
+    const url = URL.createObjectURL(blob);
+    const player = document.createElement("midi-player");
+    player.setAttribute("src", url);
+    player.setAttribute("sound-font", "");
+    host.appendChild(player);
   } else if (result.data_base64 && (t === "audio" || mime.startsWith("audio/"))) {
     const a = document.createElement("audio");
     a.controls = true;
@@ -333,7 +354,7 @@ function setStatus(msg, isErr = false) {
 
 // ---------- Define / Run ----------
 async function defineFunction() {
-  if (!state.sessionId) await newSession();
+  // Capture inputs first — newSession() may reset them via showDesignView
   const x = $("#xDesc").value.trim();
   const y = $("#yDesc").value.trim();
   if (!x || !y) {
@@ -342,6 +363,13 @@ async function defineFunction() {
   }
   const btn = $("#defineBtn");
   btn.disabled = true;
+  state.busy = true;
+  if (!state.sessionId) await newSession();
+  // Restore inputs and status in case newSession's selectSession cleared them
+  $("#xDesc").value = x;
+  $("#yDesc").value = y;
+  autoResizeDesc($("#xDesc"));
+  autoResizeDesc($("#yDesc"));
   setStatus("the LLM is dreaming up your function…");
   try {
     const r = await api(`/api/sessions/${state.sessionId}/define`, {
@@ -351,6 +379,16 @@ async function defineFunction() {
     });
     state.spec = r.spec;
     state.meta = r.session.meta;
+    // Auto-title the session from the spec name if it hasn't been renamed yet
+    if (r.spec.name && state.meta.name === "Untitled f") {
+      await fetch(`/api/sessions/${state.sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: r.spec.name }),
+      });
+      state.meta.name = r.spec.name;
+      $("#sessionName").value = r.spec.name;
+    }
     if (r.installed && r.installed.length) {
       setStatus("installed: " + r.installed.join(", "));
     } else {
@@ -362,6 +400,7 @@ async function defineFunction() {
     setStatus(String(e.message || e), true);
   } finally {
     btn.disabled = false;
+    state.busy = false;
   }
 }
 
@@ -408,6 +447,57 @@ $("#sessionName").addEventListener("change", renameSession);
   const el = document.getElementById(id);
   el.addEventListener("input", () => autoResizeDesc(el));
   autoResizeDesc(el);
+});
+
+// ---------- Settings ----------
+async function loadSettings() {
+  const s = await api("/api/settings");
+  document.getElementById("setApiKey").value = s.OPENAI_API_KEY || "";
+  document.getElementById("setApiBase").value = s.OPENAI_API_BASE || "";
+  document.getElementById("setModel").value = s.MODEL || "";
+  document.getElementById("setExecTimeout").value = s.EXEC_TIMEOUT || "60";
+}
+
+async function saveSettings() {
+  const statusEl = document.getElementById("settingsStatus");
+  statusEl.classList.remove("err");
+  statusEl.textContent = "Saving…";
+  try {
+    await api("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        OPENAI_API_KEY: document.getElementById("setApiKey").value,
+        OPENAI_API_BASE: document.getElementById("setApiBase").value,
+        MODEL: document.getElementById("setModel").value,
+        EXEC_TIMEOUT: document.getElementById("setExecTimeout").value,
+      }),
+    });
+    statusEl.textContent = "Saved ✓";
+    setTimeout(() => { statusEl.textContent = ""; }, 2500);
+  } catch (e) {
+    statusEl.textContent = "Error: " + (e.message || e);
+    statusEl.classList.add("err");
+  }
+}
+
+const settingsOverlay = document.getElementById("settingsOverlay");
+document.getElementById("settingsBtn").onclick = () => {
+  loadSettings();
+  settingsOverlay.classList.remove("hidden");
+};
+document.getElementById("closeSettingsBtn").onclick = () => settingsOverlay.classList.add("hidden");
+settingsOverlay.addEventListener("click", (e) => {
+  if (e.target === settingsOverlay) settingsOverlay.classList.add("hidden");
+});
+document.getElementById("saveSettingsBtn").onclick = saveSettings;
+
+// Toggle password visibility
+document.querySelectorAll(".toggle-pw").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const inp = document.getElementById(btn.dataset.target);
+    inp.type = inp.type === "password" ? "text" : "password";
+  });
 });
 
 (async function init() {

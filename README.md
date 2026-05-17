@@ -1,74 +1,124 @@
-# Universal Function
+<div align="center">
+  <img src="doc/cover.png" alt="Universal Function UI" width="860" />
+  <h1>Universal Function</h1>
+  <p><em>Describe what goes in. Describe what comes out. The AI writes the code.</em></p>
+</div>
 
-A playful web app where you describe **what x is** and **what y should be**, and an LLM agent writes Python code that creatively maps `f(x) = y`. Pipe a protein into music, a research PDF into a treasure map, your mood into an emoji constellation — anything goes.
+---
 
-## Setup
+## What is this?
 
-```powershell
-# 1. Create a virtual environment (recommended)
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+Universal Function is a simple web app you run on your own computer.  
+You tell it two things — **what you want to feed in** and **what you want back** — and it uses an AI to write a program that does exactly that, then runs it for you instantly.
 
-# 2. Install backend dependencies
-pip install -r requirements.txt
-```
+No coding required. Works like magic.
 
-Make sure your `.env` has at least:
+| You type… | You get… |
+|---|---|
+| `x = a word` → `y = a botanical leaf drawing` | An SVG leaf where every letter shapes a vein |
+| `x = an image` → `y = an ancient stone carving` | Your photo styled as a sandstone petroglyph |
+| `x = a research PDF` → `y = a fantasy treasure map` | Every keyword becomes a landmark on a parchment map |
+| `x = a protein sequence` → `y = a melody` | Amino acids turned into a playable MIDI song |
 
-```
-OPENAI_API_KEY=sk-...
-OPENAI_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
-MODEL=openai/glm-5.1
-```
+---
 
-`MODEL` defaults to `openai/glm-5.1` if unset. Change it to any model your endpoint serves.
+## Gallery
 
-## Run
+<table>
+<tr>
+<td align="center"><img src="doc/case1.png" alt="word → leaf" width="400"/><br/><sub>word → botanical leaf</sub></td>
+<td align="center"><img src="doc/case2.png" alt="image → stone" width="400"/><br/><sub>image → stone carving</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="doc/case3.png" alt="PDF → map" width="400"/><br/><sub>research PDF → parchment map</sub></td>
+<td align="center"><img src="doc/case4.png" alt="protein → melody" width="400"/><br/><sub>protein → piano melody</sub></td>
+</tr>
+</table>
 
-```powershell
-uvicorn backend.main:app --reload --port 8000
-```
+---
 
-Open http://localhost:8000 in your browser.
+## Quick Start
 
-## How it works
+> **You need:** Windows, [Python 3.10+](https://www.python.org/downloads/), and an API key from an AI provider.
 
-1. You type two short descriptions (e.g. `x = a haiku`, `y = a generative SVG`) and click **conjure f**.
-2. The backend asks the LLM (via `backend/agent.py`) for a strict JSON spec: input/output types, dependencies, and a Python `def run(input_data, workspace_dir)` body.
-3. Any pip dependencies declared by the LLM are installed into the current environment.
-4. The function code is saved into a per-session workspace under `workspaces/<id>/`.
-5. When you hit **run f(x)**, the function executes in a fresh subprocess with a timeout. Its return dict tells the frontend how to render `y` (text, markdown, html, image, audio, file, json…).
+### Step 1 — Install (one time only)
 
-Each session is an isolated folder, so you can keep many `f`s side by side. Sessions are listed in the left sidebar.
+Double-click **`install.bat`**.  
+It will set up everything automatically. Takes about a minute.
+
+> If you don't have Python yet, download it from [python.org](https://www.python.org/downloads/).  
+> During installation, **check the box "Add Python to PATH"** — this is important!
+
+### Step 2 — Start the app
+
+Double-click **`start.bat`**.  
+Your browser will open automatically at `http://localhost:8000`.
+
+### Step 3 — Add your API key
+
+Click the **⚙ Settings** button at the bottom of the left sidebar and enter your API key.  
+Hit **Save settings**. Done — you're ready to conjure functions.
+
+---
+
+## Getting an API Key
+
+You need a key from one of these providers:
+
+| Provider | Sign-up link | Notes |
+|---|---|---|
+| **OpenAI** | [platform.openai.com](https://platform.openai.com/api-keys) | Works out of the box |
+| **Alibaba Dashscope** | [dashscope.aliyuncs.com](https://dashscope.aliyuncs.com) | Set API Base to `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| **Any OpenAI-compatible API** | — | Enter its base URL in the Settings panel |
+
+Paste your key into **⚙ Settings → OpenAI API Key** and save.
+
+---
+
+## Settings Reference
+
+| Setting | What it does | Example |
+|---|---|---|
+| **API Key** | Your secret key from the AI provider | `sk-abc123…` |
+| **API Base URL** | Custom endpoint (leave blank for OpenAI) | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| **Model** | Which AI model to use | `gpt-4o` or `openai/glm-5.1` |
+| **Execution Timeout** | Max seconds a generated function can run | `60` |
+
+---
+
+## How it works (for the curious)
+
+1. You type what **x** is and what **y** should be and click **conjure f**.
+2. The AI writes a JSON description *and* Python code for a function `f(x) = y`.
+3. Any extra Python libraries the code needs are installed automatically.
+4. When you click **run f(x)**, the code runs in a sandboxed subprocess on your computer.
+5. The result — text, image, audio, HTML, or a downloadable file — appears on screen.
+
+Each "f" you create is saved in the `workspaces/` folder so you can come back to it later.
+
+---
+
+## ⚠️ Security note
+
+This app **runs AI-generated Python code on your machine**. Only use it with AI providers and inputs you trust. The system prompt instructs the AI to avoid network calls and reading private files, but this is not technically enforced. Do not expose this app to the internet.
+
+---
 
 ## Project layout
 
 ```
-backend/
-  main.py       FastAPI app & endpoints, mounts the frontend
-  agent.py      LLM prompt + JSON spec extraction
-  executor.py   subprocess runner with timeout + dependency install
-  sessions.py   per-session workspace folders
-frontend/
-  index.html    f(x)=y stage with two description inputs
-  style.css     warm, paper-like theme
-  app.js        session sidebar, design view, run view, output renderer
-workspaces/     created at runtime, one folder per session
+install.bat         ← run this first (Windows)
+start.bat           ← run this to launch
+requirements.txt    ← Python dependencies
+backend/            ← FastAPI server
+  main.py           ← API endpoints (sessions, define, run, settings)
+  agent.py          ← AI prompt + code extraction
+  executor.py       ← subprocess runner with timeout
+  sessions.py       ← per-session workspace folders
+frontend/           ← browser UI (no build step needed)
+  index.html
+  style.css
+  app.js
+workspaces/         ← created automatically, one folder per session
+doc/                ← screenshots used in this README
 ```
-
-## ⚠️ Security warning
-
-This project **executes LLM-generated Python code on your machine**. Each run goes through a subprocess with a timeout, but there is no sandbox. Run it only on your own computer with models and inputs you trust. The system prompt asks the LLM to avoid network calls and env-var access, but that is not enforced.
-
-If you want stronger isolation later, the `executor.execute()` subprocess call is the single chokepoint to swap for Docker / firejail / nsjail.
-
-## Tunables
-
-Set in `.env` or shell:
-
-| Variable          | Default                              | Notes                                |
-|-------------------|--------------------------------------|--------------------------------------|
-| `OPENAI_API_KEY`  | —                                    | required                             |
-| `OPENAI_API_BASE` | OpenAI default                       | e.g. dashscope compatible-mode URL   |
-| `MODEL`           | `openai/glm-5.1`                     | model name passed to the API         |
-| `EXEC_TIMEOUT`    | `60`                                 | per-run subprocess timeout (seconds) |
