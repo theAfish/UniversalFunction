@@ -95,8 +95,10 @@ let _descBaseH = null;
 
 function autoResizeDesc(el) {
   const BASE_FONT = 96;
-  const MIN_FONT = 22;
+  const MIN_FONT = 18;
+  const MIN_W = 84;
   const MAX_W = 260;
+  const MAX_LINES_BEFORE_GROW = 2;
   const fontFamily = getComputedStyle(el).fontFamily;
 
   // Cache the natural single-line height at BASE_FONT (measured once)
@@ -114,7 +116,7 @@ function autoResizeDesc(el) {
   const text = el.value;
   if (!text) {
     el.style.fontSize = BASE_FONT + 'px';
-    el.style.width = '84px';
+    el.style.width = MIN_W + 'px';
     el.style.height = fixedH + 'px';
     return;
   }
@@ -123,36 +125,30 @@ function autoResizeDesc(el) {
   const rawW = _mc.measureText(text).width;
 
   if (rawW + 8 <= MAX_W) {
-    // Fits on one line at BASE_FONT — no shrinking needed
+    // Stage 1: keep large font and only grow width from compact to max.
     el.style.fontSize = BASE_FONT + 'px';
-    el.style.width = Math.max(84, rawW + 8) + 'px';
+    el.style.width = Math.max(MIN_W, rawW + 8) + 'px';
     el.style.height = fixedH + 'px';
     return;
   }
 
-  // Text wider than MAX_W. Binary-search for the largest font where
-  // wrapped text still fits within fixedH.
-  let lo = MIN_FONT, hi = BASE_FONT, bestFont = MIN_FONT;
-  for (let i = 0; i < 20; i++) {
-    const mid = (lo + hi) / 2;
-    _mc.font = `italic ${mid}px ${fontFamily}`;
-    const w = _mc.measureText(text).width;
-    const lines = Math.ceil(w / MAX_W);
-    // Scale the known single-line height by the font-size ratio
-    const estimatedH = lines * fixedH * (mid / BASE_FONT);
-    if (estimatedH <= fixedH) {
-      bestFont = mid;
-      lo = mid;
-    } else {
-      hi = mid;
-    }
+  // Stage 2: lock width, keep at most two visible lines, and shrink font.
+  // Stage 3: once minimum font is reached, start growing height for extra text.
+  const fontForMaxLines = (MAX_LINES_BEFORE_GROW * MAX_W * BASE_FONT) / rawW;
+  const chosenFont = Math.min(BASE_FONT, Math.max(MIN_FONT, fontForMaxLines));
+
+  el.style.fontSize = chosenFont + 'px';
+  el.style.width = MAX_W + 'px';
+
+  if (fontForMaxLines >= MIN_FONT) {
+    const twoLineH = fixedH * (chosenFont / BASE_FONT) * MAX_LINES_BEFORE_GROW;
+    el.style.height = twoLineH + 'px';
+    return;
   }
 
-  el.style.fontSize = bestFont + 'px';
-  el.style.width = MAX_W + 'px';
   el.style.height = 'auto';
-  // Only grow beyond fixedH when text is truly too long (min-font overflow)
-  el.style.height = Math.max(fixedH, el.scrollHeight) + 'px';
+  const minTwoLineH = fixedH * (MIN_FONT / BASE_FONT) * MAX_LINES_BEFORE_GROW;
+  el.style.height = Math.max(minTwoLineH, el.scrollHeight) + 'px';
 }
 
 function showDesignView(meta) {

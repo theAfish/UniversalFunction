@@ -116,14 +116,15 @@ body {
 
 .equation {
   display: flex; align-items: flex-end; justify-content: center;
-  gap: 14px;
+  gap: 6px;
   font-size: 96px;
   font-style: italic;
   letter-spacing: 0.02em;
 }
-.equation .fn { display: inline-flex; align-items: center; gap: 6px; }
+.equation .fn { display: inline-flex; align-items: center; gap: 2px; }
 .equation .paren { color: var(--ink); }
 .equation .eq { margin: 0 10px; color: var(--ink-soft); }
+.equation .annotated-slot { margin-inline: -2px; }
 .slot {
   display: inline-flex;
   flex-direction: column;
@@ -148,7 +149,7 @@ body {
   overflow: hidden;
   display: block;
   word-break: break-all;
-  transition: border-bottom-color .15s;
+  transition: border-bottom-color .15s, width .18s ease, height .18s ease, font-size .18s ease;
 }
 .desc-input::placeholder {
   color: var(--ghost);
