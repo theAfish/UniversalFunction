@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "universal-function"
@@ -21,29 +21,64 @@ dependencies = [
 
     # numerics / data
     "numpy>=1.26",
-    "scipy>=1.13",          # scientific computing — FFT, signal, stats
+    "scipy>=1.13",          # scientific computing — FFT, signal, stats, optimize, interpolate
     "pandas>=2.2",          # tabular data, CSV in/out
+    "scikit-learn>=1.4",    # ML: clustering, PCA, regression, classification
+    "statsmodels>=0.14",    # statistical models, time-series
+    "sympy>=1.12",          # symbolic math / LaTeX rendering
 
     # visualisation
     "matplotlib>=3.8",
+    "seaborn>=0.13",        # pretty statistical plots
+    "plotly>=5.20",         # interactive HTML plots
     "networkx>=3.3",        # graph / network diagrams
     "wordcloud>=1.9",       # text → word-cloud images
-    "sympy>=1.12",          # symbolic math / LaTeX rendering
+    "graphviz>=0.20",       # graphviz-rendered diagrams
 
     # image processing
     "Pillow>=10.3",
     "imageio>=2.34",        # read/write many image & video formats
+    "opencv-python-headless>=4.9",  # computer vision: filters, contours, transforms
+    "scikit-image>=0.23",   # image processing algorithms
+    "svgwrite>=1.4",        # generate SVG images
+    "cairosvg>=2.7",        # SVG → PNG/PDF
 
-    # document / markup
+    # document / markup / text
     "pypdf>=4.2",           # PDF reading (pypdf)
     "fpdf2>=2.7",           # PDF generation
+    "reportlab>=4.1",       # advanced PDF generation
     "Markdown>=3.6",        # Markdown → HTML
+    "jinja2>=3.1",          # HTML/text templating
+    "beautifulsoup4>=4.12", # HTML parsing
+    "lxml>=5.2",            # fast XML/HTML parser
+    "pyyaml>=6.0",          # YAML in/out
     "qrcode[pil]>=7.4",     # QR-code generation
+    "python-docx>=1.1",     # Word .docx in/out
+    "openpyxl>=3.1",        # Excel .xlsx in/out
 
-    # audio / MIDI
+    # text / NLP / linguistics
+    "nltk>=3.8",            # tokenization, stopwords, wordnet (data downloaded on demand)
+    "textblob>=0.18",       # simple sentiment & noun-phrase extraction
+    "pyphen>=0.15",         # syllable hyphenation (poetry / haiku)
+    "unidecode>=1.3",       # ascii-fold any unicode
+    "emoji>=2.11",          # emoji <-> text
+    "rich>=13.7",           # rich text / ansi rendering
+    "pyfiglet>=1.0",        # ascii-art banner text
+    "art>=6.2",             # ascii-art catalogue
+
+    # audio / MIDI / music
     "MIDIUtil>=1.2",        # write MIDI files
     "mido>=1.3",            # read & manipulate MIDI files
     "pydub>=0.25",          # audio slicing / format conversion (needs ffmpeg)
+    "soundfile>=0.12",      # read/write WAV/FLAC/OGG
+    "music21>=9.1",         # symbolic music analysis & generation
+
+    # geometry / 3d / games / misc creative
+    "shapely>=2.0",         # 2D geometry
+    "trimesh>=4.3",         # 3D mesh creation & export (STL/OBJ/GLB)
+    "noise>=1.2",           # perlin / simplex noise for procedural art
+    "colour>=0.1.5",        # color science / conversions
+    "faker>=25.0",          # synthetic data generation
 ]
 
 [project.optional-dependencies]
